@@ -16,6 +16,12 @@ public class PlayerController : MonoBehaviour
     public AudioClip destroySound;           // Inspector에서 할당
     private AudioSource audioSource;
 
+    private Coroutine speedBoostCoroutine;
+    private float originalMoveSpeed;
+
+    private float prevSpeed = 0f;
+    private float accelerationValue = 0f;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -33,9 +39,22 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
+        // 속도 계산
+        float currentSpeed = rb.velocity.x;
+        // 가속도 계산
+        accelerationValue = (currentSpeed - prevSpeed) / Time.fixedDeltaTime;
+        prevSpeed = currentSpeed;
+
+        // UI에 표시
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.UpdateCarSpeedText($"속도: {currentSpeed:F2} m/s");
+            UIManager.Instance.UpdateSurfaceText($"가속도: {accelerationValue:F2} m/s²");
+        }
+
         // 오른쪽 화살표 또는 마우스 클릭 시 가속
         if ((Input.GetMouseButton(0) || Input.GetKey(KeyCode.RightArrow)) && isGrounded)
-            {
+        {
             float targetSpeed = moveSpeed;
             float speedDiff = targetSpeed - rb.velocity.x;
             float force = speedDiff * acceleration;
@@ -72,5 +91,21 @@ public class PlayerController : MonoBehaviour
         {
             isGrounded = false;
         }
+    }
+
+    public void BoostSpeed(float boostAmount, float duration)
+    {
+        if (speedBoostCoroutine != null)
+            StopCoroutine(speedBoostCoroutine);
+        speedBoostCoroutine = StartCoroutine(SpeedBoostRoutine(boostAmount, duration));
+    }
+
+    private IEnumerator SpeedBoostRoutine(float boostAmount, float duration)
+    {
+        originalMoveSpeed = moveSpeed;
+        moveSpeed += boostAmount;
+        yield return new WaitForSeconds(duration);
+        moveSpeed = originalMoveSpeed;
+        speedBoostCoroutine = null;
     }
 }
